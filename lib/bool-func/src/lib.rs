@@ -1,7 +1,7 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+mod bool_func;
+mod error;
+
+pub use crate::bool_func::BooleanFunc;
+
+pub use crate::error::BFError;
+pub use crate::error::BFKindOfError;
