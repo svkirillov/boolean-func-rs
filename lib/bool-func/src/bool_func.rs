@@ -3,7 +3,6 @@ use crate::BFKindOfError;
 
 use std::fmt;
 
-#[derive(Clone, PartialEq, Eq)]
 pub struct BooleanFunc {
     n_vars: usize,
     func: Vec<u32>,
@@ -40,14 +39,8 @@ impl BooleanFunc {
         for i in 0..str_size {
             let c = &s[i..i + 1];
             match c {
-                "0" => {
-                    tmp |= 0 << (i % 32) as u32;
-                }
-
-                "1" => {
-                    tmp |= 1 << (i % 32) as u32;
-                }
-
+                "0" => tmp |= 0 << (i % 32) as u32,
+                "1" => tmp |= 1 << (i % 32) as u32,
                 _ => {
                     return Err(BFError::new(
                         BFKindOfError::ParseError,
@@ -70,6 +63,32 @@ impl BooleanFunc {
         })
     }
 }
+
+impl Clone for BooleanFunc {
+    fn clone(&self) -> Self {
+        BooleanFunc {
+            n_vars: self.n_vars,
+            func: self.func.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.n_vars = source.n_vars;
+        self.func = source.func.clone();
+    }
+}
+
+impl PartialEq for BooleanFunc {
+    fn eq(&self, other: &Self) -> bool {
+        self.n_vars == other.n_vars && self.func == other.func
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
+
+impl Eq for BooleanFunc {}
 
 impl fmt::Display for BooleanFunc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -121,5 +140,39 @@ mod tests {
     #[should_panic(expected = "Wrong symbol: `2`")]
     fn test_create_wrong_str() {
         BooleanFunc::from_str("02").unwrap();
+    }
+
+    #[test]
+    fn test_clone() {
+        let bf1 = BooleanFunc::from_str("01").unwrap();
+        let bf2 = bf1.clone();
+
+        assert_eq!(bf1, bf2);
+    }
+
+    #[test]
+    fn test_clone_from() {
+        let bf1 = BooleanFunc::from_str("01").unwrap();
+        let mut bf2 = BooleanFunc::new();
+
+        bf2.clone_from(&bf1);
+
+        assert_eq!(bf1, bf2);
+    }
+
+    #[test]
+    fn test_partialeq_eq() {
+        let bf1 = BooleanFunc::from_str("01").unwrap();
+        let bf2 = bf1.clone();
+
+        assert!(bf1 == bf2);
+    }
+
+    #[test]
+    fn test_partialeq_ne() {
+        let bf1 = BooleanFunc::from_str("01").unwrap();
+        let bf2 = BooleanFunc::from_str("10").unwrap();
+
+        assert!(bf1 != bf2);
     }
 }
