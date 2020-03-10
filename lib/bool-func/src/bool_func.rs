@@ -1,6 +1,7 @@
 use crate::BFError;
 use crate::BFKindOfError;
 
+use std::cmp::min;
 use std::fmt;
 
 pub struct BooleanFunc {
@@ -39,8 +40,8 @@ impl BooleanFunc {
         for i in 0..str_size {
             let c = &s[i..i + 1];
             match c {
-                "0" => tmp |= 0 << (i % 32) as u32,
-                "1" => tmp |= 1 << (i % 32) as u32,
+                "1" => tmp |= 1 << (i & 31) as u32,
+                "0" => {}
                 _ => {
                     return Err(BFError::new(
                         BFKindOfError::ParseError,
@@ -49,7 +50,7 @@ impl BooleanFunc {
                 }
             }
 
-            if i != 0 && i % 32 == 0 {
+            if i != 0 && i & 31 == 0 {
                 values.push(tmp);
                 tmp = 0;
             }
@@ -61,6 +62,38 @@ impl BooleanFunc {
             n_vars: str_size,
             func: values,
         })
+    }
+
+    pub fn weight(&self) -> usize {
+        let mut weight = 0;
+
+        let n = self.func.len();
+        let mut i = 0;
+        let mut gr;
+        let mut s;
+        let mut x;
+
+        while i < n {
+            gr = min(i + 31, n);
+            s = 0;
+
+            for j in i..gr {
+                x = self.func[j];
+                x = x.overflowing_sub((x >> 1) & 0x55555555).0;
+                x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+                x = (x + (x >> 4)) & 0x0F0F0F0F;
+
+                s = s + x;
+            }
+
+            s = (s & 0x00FF00FF) + ((s >> 8) & 0x00FF00FF);
+            s = (s & 0x0000FFFF) + (s >> 16);
+
+            weight += s as usize;
+            i += 31;
+        }
+
+        weight
     }
 }
 
@@ -140,6 +173,21 @@ mod tests {
     #[should_panic(expected = "Wrong symbol: `2`")]
     fn test_create_wrong_str() {
         BooleanFunc::from_str("02").unwrap();
+    }
+
+    #[test]
+    fn test_calc_weight() {
+        let bf1 = BooleanFunc::from_str("01010101").unwrap();
+        let bf2 = BooleanFunc::from_str("1111").unwrap();
+        let bf3 = BooleanFunc::from_str(
+            "00110110100111001110111100000111\
+            00111111111000000011110101010101",
+        )
+        .unwrap();
+
+        assert_eq!(bf1.weight(), 4);
+        assert_eq!(bf2.weight(), 4);
+        assert_eq!(bf3.weight(), 36);
     }
 
     #[test]
