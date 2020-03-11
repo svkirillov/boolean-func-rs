@@ -3,7 +3,7 @@ name = "boolean-func-rs"
 version = "0.1.0"
 authors = ["Simon Kirillov <svkirillov3@gmail.com>"]
 edition = "2018"
-license = "MIT"
+license = "WTFPL"
 
 [[bin]]
 name = "main"
