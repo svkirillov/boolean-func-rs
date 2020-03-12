@@ -30,7 +30,7 @@ pub struct BFError {
 impl BFError {
     pub fn new(kind: BFKindOfError, msg: &str) -> BFError {
         BFError {
-            kind: kind,
+            kind,
             msg: msg.to_string(),
         }
     }

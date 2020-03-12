@@ -101,7 +101,7 @@ impl BooleanFunc {
         }
     }
 
-    pub fn from_str(s: &str) -> Result<BooleanFunc, BFError> {
+    pub fn from_str(s: &str) -> Result<Self, BFError> {
         let str_size = s.len();
 
         if str_size == 0 {
@@ -124,7 +124,7 @@ impl BooleanFunc {
         let mut values = Vec::<u32>::new();
 
         for i in 0..str_size {
-            let c = &s[i..i + 1];
+            let c = &s[i..=i];
             match c {
                 "1" => tmp |= 1 << (i & 31) as u32,
                 "0" => {}
@@ -145,7 +145,7 @@ impl BooleanFunc {
         values.push(tmp);
 
         Ok(BooleanFunc {
-            n_vars: n_vars,
+            n_vars,
             func: values,
         })
     }
@@ -165,15 +165,15 @@ impl BooleanFunc {
 
             for j in i..gr {
                 x = self.func[j];
-                x = x.overflowing_sub((x >> 1) & 0x55555555).0;
-                x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
-                x = (x + (x >> 4)) & 0x0F0F0F0F;
+                x = x.overflowing_sub((x >> 1) & 0x5555_5555).0;
+                x = (x & 0x3333_3333) + ((x >> 2) & 0x3333_3333);
+                x = (x + (x >> 4)) & 0x0F0F_0F0F;
 
-                s = s + x;
+                s += x;
             }
 
-            s = (s & 0x00FF00FF) + ((s >> 8) & 0x00FF00FF);
-            s = (s & 0x0000FFFF) + (s >> 16);
+            s = (s & 0x00FF_00FF) + ((s >> 8) & 0x00FF_00FF);
+            s = (s & 0x0000_FFFF) + (s >> 16);
 
             weight += s as usize;
             i += 31;
@@ -183,9 +183,63 @@ impl BooleanFunc {
     }
 
     pub fn mu(&self) -> BooleanFunc {
+        fn word_process(word: u32) -> u32 {
+            let mut result = word ^ ((word << 1) & 0xAAAA_AAAA);
+            result ^= (result << 2) & 0xCCCC_CCCC;
+            result ^= (result << 4) & 0xF0F0_F0F0;
+            result ^= (result << 8) & 0xFF00_FF00;
+            result ^= (result << 16) & 0xFFFF_0000;
+
+            result
+        }
+
+        if self.n_vars == 0 {
+            return BooleanFunc {
+                n_vars: 0,
+                func: Vec::new(),
+            };
+        }
+
+        if self.n_vars > 5 {
+            let mut mu_values = self.func.clone();
+
+            for i in 0..self.func.len() {
+                mu_values[i] = word_process(mu_values[i]);
+            }
+
+            let mut step: usize = 1;
+            let mut i: usize;
+
+            while step <= (self.func.len() / 2) {
+                i = 0;
+
+                while i < self.func.len() {
+                    for j in i..i + step {
+                        mu_values[j + step] ^= mu_values[j];
+                    }
+                    i += step * 2;
+                }
+
+                step *= 2;
+            }
+
+            return BooleanFunc {
+                n_vars: self.n_vars,
+                func: mu_values,
+            };
+        }
+
+        let mut values = word_process(self.func[0]);
+        values &= ((1 << (1 << self.n_vars)) - 1) as u32;
+
         BooleanFunc {
-            n_vars: 0,
-            func: Vec::new(),
+            n_vars: self.n_vars,
+            func: {
+                let mut vec = Vec::<u32>::new();
+                vec.push(values);
+
+                vec
+            },
         }
     }
 }
@@ -207,10 +261,6 @@ impl Clone for BooleanFunc {
 impl PartialEq for BooleanFunc {
     fn eq(&self, other: &Self) -> bool {
         self.n_vars == other.n_vars && self.func == other.func
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        !self.eq(other)
     }
 }
 
@@ -324,6 +374,13 @@ mod tests {
         assert_eq!(bf1.weight(), 4);
         assert_eq!(bf2.weight(), 4);
         assert_eq!(bf3.weight(), 36);
+    }
+
+    #[test]
+    fn test_mu_func() {
+        let bf = BooleanFunc::gen_random(10);
+
+        assert_eq!(bf, bf.mu().mu());
     }
 
     #[test]
