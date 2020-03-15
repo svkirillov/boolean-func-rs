@@ -1,9 +1,10 @@
-use crate::BFError;
-use crate::BFKindOfError;
-
-use rand::Rng;
 use std::cmp::min;
 use std::fmt;
+
+use rand::Rng;
+
+use crate::BFError;
+use crate::BFKindOfError;
 
 pub struct BooleanFunc {
     n_vars: usize,
@@ -200,9 +201,9 @@ impl BooleanFunc {
             };
         }
 
-        if self.n_vars > 5 {
-            let mut mu_values = self.func.clone();
+        let mut mu_values = self.func.clone();
 
+        if self.n_vars > 5 {
             for i in 0..self.func.len() {
                 mu_values[i] = word_process(mu_values[i]);
             }
@@ -229,18 +230,83 @@ impl BooleanFunc {
             };
         }
 
-        let mut values = word_process(self.func[0]);
-        values &= ((1 << (1 << self.n_vars)) - 1) as u32;
+        mu_values[0] = word_process(mu_values[0]) & ((1 << (1 << self.n_vars)) - 1) as u32;
 
         BooleanFunc {
             n_vars: self.n_vars,
-            func: {
-                let mut vec = Vec::<u32>::new();
-                vec.push(values);
-
-                vec
-            },
+            func: mu_values,
         }
+    }
+
+    pub fn anf(&self) -> String {
+        fn get_index(n: usize) -> String {
+            let mut index = String::new();
+            let mut n = n;
+
+            loop {
+                match n % 10 {
+                    0 => index = "₀".to_string() + &index,
+                    1 => index = "₁".to_string() + &index,
+                    2 => index = "₂".to_string() + &index,
+                    3 => index = "₃".to_string() + &index,
+                    4 => index = "₄".to_string() + &index,
+                    5 => index = "₅".to_string() + &index,
+                    6 => index = "₆".to_string() + &index,
+                    7 => index = "₇".to_string() + &index,
+                    8 => index = "₈".to_string() + &index,
+                    9 => index = "₉".to_string() + &index,
+                    _ => {}
+                }
+
+                n /= 10;
+
+                if n == 0 {
+                    break;
+                }
+            }
+
+            index
+        }
+
+        let mu = self.mu();
+
+        let mut monoms = Vec::new();
+
+        let n_bits = 1 << self.n_vars;
+        let mut curr_bit: usize = 0;
+
+        // u32 block
+        'outer: for i in 0..mu.func.len() {
+            let v = mu.func[i];
+
+            // mu function values in a block
+            for j in 0..32 {
+                if v >> j as u32 & 1 == 1 {
+                    let mut part = String::new();
+
+                    // x variables values
+                    for k in 0..self.n_vars {
+                        if curr_bit >> k & 1 == 1 {
+                            part = format!("{}x{}", part, get_index(k));
+                        }
+                    }
+
+                    if part.is_empty() {
+                        monoms.push("1".to_string());
+                    } else {
+                        monoms.push(part);
+                    }
+                }
+
+                curr_bit += 1;
+
+                if curr_bit == n_bits {
+                    break 'outer;
+                }
+            }
+        }
+
+        monoms.join(" ⊕ ")
     }
 }
 
