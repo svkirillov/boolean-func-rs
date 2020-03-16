@@ -308,6 +308,19 @@ impl BooleanFunc {
 
         monoms.join(" ⊕ ")
     }
+
+    pub fn deg(&self) -> usize {
+        let mu = self.mu();
+
+        for values in (0..(1 << self.n_vars)).rev() {
+            let v = mu.func[values / 32];
+            if v >> (values & 31) as u32 & 1 == 1 {
+                return values.count_ones() as usize;
+            }
+        }
+
+        0
+    }
 }
 
 impl Clone for BooleanFunc {
@@ -343,7 +356,7 @@ impl fmt::Display for BooleanFunc {
 
         for i in 0..n_bits {
             let v = self.func[i / 32];
-            match v >> (i % 32) as u32 & 1 {
+            match v >> (i & 31) as u32 & 1 {
                 0 => s += "0",
                 1 => s += "1",
                 _ => {}
