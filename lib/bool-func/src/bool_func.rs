@@ -485,7 +485,7 @@ mod tests {
         let bf1 = BooleanFunc::from_str("01").unwrap();
         let bf2 = bf1.clone();
 
-        assert!(bf1 == bf2);
+        assert_eq!(bf1, bf2);
     }
 
     #[test]
@@ -493,7 +493,7 @@ mod tests {
         let bf1 = BooleanFunc::from_str("01").unwrap();
         let bf2 = BooleanFunc::from_str("10").unwrap();
 
-        assert!(bf1 != bf2);
+        assert_ne!(bf1, bf2);
     }
 
     #[test]
