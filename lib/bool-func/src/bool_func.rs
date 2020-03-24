@@ -27,7 +27,7 @@ impl BooleanFunc {
             };
         }
 
-        let n_values = 1 << n;
+        let n_values: usize = 1 << n;
 
         let mut rng = rand::thread_rng();
         let mut values = Vec::<u32>::new();
@@ -54,7 +54,7 @@ impl BooleanFunc {
             };
         }
 
-        let n_values = 1 << n;
+        let n_values: usize = 1 << n;
 
         BooleanFunc {
             n_vars: n,
@@ -82,7 +82,7 @@ impl BooleanFunc {
             };
         }
 
-        let n_values = 1 << n;
+        let n_values: usize = 1 << n;
 
         BooleanFunc {
             n_vars: n,
@@ -272,7 +272,7 @@ impl BooleanFunc {
 
         let mut monoms = Vec::new();
 
-        let n_bits = 1 << self.n_vars;
+        let n_bits: usize = 1 << self.n_vars;
         let mut curr_bit: usize = 0;
 
         // u32 block
@@ -304,6 +304,10 @@ impl BooleanFunc {
                     break 'outer;
                 }
             }
+        }
+
+        if monoms.is_empty() {
+            return String::from("<empty>");
         }
 
         monoms.join(" ⊕ ")
@@ -405,11 +409,28 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_gen_random() {
         let bf1 = BooleanFunc::new();
         let bf2 = BooleanFunc::gen_random(0);
 
         assert_eq!(bf1, bf2);
+
+        let mut bf: BooleanFunc;
+        let mut stat: f64 = 0.0;
+        let mut count: usize = 0;
+
+        for _ in 0..10 {
+            for n in 1..=30 {
+                bf = BooleanFunc::gen_random(n);
+                stat += bf.weight() as f64 / (1 << n) as f64;
+                count += 1;
+            }
+        }
+
+        stat = stat as f64 / count as f64;
+
+        assert!(0.47 < stat && stat < 0.51);
     }
 
     #[test]
@@ -460,6 +481,18 @@ mod tests {
         let bf = BooleanFunc::gen_random(10);
 
         assert_eq!(bf, bf.mu().mu());
+    }
+
+    #[test]
+    fn test_anf_func() {
+        let bf = BooleanFunc::from_str("0001000100011110").unwrap();
+        assert_eq!("x₀x₁ ⊕ x₂x₃", bf.anf());
+
+        let bf = BooleanFunc::from_str(
+            "0001000100011110000100010001111000010001000111101110111011100001",
+        )
+        .unwrap();
+        assert_eq!("x₀x₁ ⊕ x₂x₃ ⊕ x₄x₅", bf.anf());
     }
 
     #[test]
