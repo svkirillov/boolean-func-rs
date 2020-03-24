@@ -1,6 +1,7 @@
 use std::cmp::min;
 use std::fmt;
 
+use itertools::Itertools;
 use rand::Rng;
 
 use crate::BFError;
@@ -363,6 +364,33 @@ impl BooleanFunc {
         }
 
         wht
+    }
+
+    pub fn ci_order(&self) -> usize {
+        if self.n_vars == 0 {
+            return 0;
+        }
+
+        let wht = self.wht();
+        let mut index: usize;
+        let mut result: usize = 0;
+
+        'outer: for i in 1..=self.n_vars {
+            for j in (0..self.n_vars).combinations(i) {
+                index = 0;
+
+                for k in j {
+                    index |= 1 << k;
+                }
+
+                if wht[index] != 0 {
+                    break 'outer;
+                }
+            }
+            result += 1;
+        }
+
+        result
     }
 }
 
