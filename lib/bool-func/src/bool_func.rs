@@ -325,6 +325,45 @@ impl BooleanFunc {
 
         0
     }
+
+    pub fn wht(&self) -> Vec<i32> {
+        let mut wht = Vec::new();
+
+        if self.n_vars == 0 {
+            return wht;
+        }
+
+        let n_bits: usize = 1 << self.n_vars;
+
+        for i in 0..n_bits {
+            let v = self.func[i / 32];
+            match v >> (i & 31) as u32 & 1 {
+                0 => wht.push(1),
+                1 => wht.push(-1),
+                _ => {}
+            }
+        }
+
+        let mut step: usize = 1;
+        let mut i: usize;
+
+        while step <= (wht.len() / 2) {
+            i = 0;
+
+            while i < wht.len() {
+                for j in i..i + step {
+                    let tmp = wht[j];
+                    wht[j] += wht[j + step];
+                    wht[j + step] = tmp - wht[j + step];
+                }
+                i += step * 2;
+            }
+
+            step *= 2;
+        }
+
+        wht
+    }
 }
 
 impl Clone for BooleanFunc {
@@ -356,7 +395,7 @@ impl fmt::Display for BooleanFunc {
         }
 
         let mut s = String::new();
-        let n_bits = 1 << self.n_vars;
+        let n_bits: usize = 1 << self.n_vars;
 
         for i in 0..n_bits {
             let v = self.func[i / 32];
@@ -493,6 +532,43 @@ mod tests {
         )
         .unwrap();
         assert_eq!("x₀x₁ ⊕ x₂x₃ ⊕ x₄x₅", bf.anf());
+    }
+
+    #[test]
+    fn test_deg_func() {
+        let bf = BooleanFunc::from_str("0001000100011110").unwrap();
+        assert_eq!(2, bf.deg());
+
+        let bf = BooleanFunc::from_str(
+            "0001000100011110000100010001111000010001000111101110111011100001",
+        )
+        .unwrap();
+        assert_eq!(2, bf.deg());
+    }
+
+    #[test]
+    fn test_wht_func() {
+        let bf = BooleanFunc::from_str("01110101").unwrap();
+        assert_eq!(vec![-2, 6, 2, 2, -2, -2, 2, 2], bf.wht());
+
+        let bf = BooleanFunc::from_str("0001000100011110").unwrap();
+        assert_eq!(
+            vec![4, 4, 4, -4, 4, 4, 4, -4, 4, 4, 4, -4, -4, -4, -4, 4],
+            bf.wht()
+        );
+
+        let bf = BooleanFunc::from_str(
+            "0001000100011110000100010001111000010001000111101110111011100001",
+        )
+        .unwrap();
+        assert_eq!(
+            vec![
+                8, 8, 8, -8, 8, 8, 8, -8, 8, 8, 8, -8, -8, -8, -8, 8, 8, 8, 8, -8, 8, 8, 8, -8, 8,
+                8, 8, -8, -8, -8, -8, 8, 8, 8, 8, -8, 8, 8, 8, -8, 8, 8, 8, -8, -8, -8, -8, 8, -8,
+                -8, -8, 8, -8, -8, -8, 8, -8, -8, -8, 8, 8, 8, 8, -8
+            ],
+            bf.wht()
+        );
     }
 
     #[test]
