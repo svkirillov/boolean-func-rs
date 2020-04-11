@@ -7,4 +7,3 @@ license = "WTFPL"
 
 [dependencies]
 rand = "*"
-itertools = "*"

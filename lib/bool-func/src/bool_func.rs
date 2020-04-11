@@ -1,7 +1,6 @@
 use std::cmp::min;
 use std::fmt;
 
-use itertools::Itertools;
 use rand::Rng;
 
 use crate::BFError;
@@ -372,21 +371,20 @@ impl BooleanFunc {
         }
 
         let wht = self.wht();
-        let mut index: usize;
+        let mut scores = vec![0 as u32; self.n_vars + 1];
         let mut result: usize = 0;
 
-        'outer: for i in 1..=self.n_vars {
-            for j in (0..self.n_vars).combinations(i) {
-                index = 0;
-
-                for k in j {
-                    index |= 1 << k;
-                }
-
-                if wht[index] != 0 {
-                    break 'outer;
-                }
+        for i in 0..wht.len() {
+            if wht[i] != 0 {
+                scores[i.count_ones() as usize] += 1;
             }
+        }
+
+        for i in 1..=scores.len() {
+            if scores[i] != 0 {
+                break;
+            }
+
             result += 1;
         }
 
