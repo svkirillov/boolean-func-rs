@@ -383,7 +383,7 @@ impl BooleanFunc {
 
     pub fn affine_approximation(&self) -> String {
         if self.n_vars == 0 {
-            return String::new();
+            return String::from("<empty>");
         }
 
         let wht = self.wht();
