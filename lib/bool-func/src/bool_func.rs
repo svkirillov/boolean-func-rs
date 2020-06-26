@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::fmt;
+use std::mem::size_of;
 
 use rand::Rng;
 
@@ -133,7 +134,7 @@ impl BooleanFunc {
                     return Err(BFError::new(
                         BFKindOfError::ParseError,
                         format!("Wrong symbol: `{}`", c).as_str(),
-                    ))
+                    ));
                 }
             }
 
@@ -239,35 +240,6 @@ impl BooleanFunc {
     }
 
     pub fn anf(&self) -> String {
-        fn get_index(n: usize) -> String {
-            let mut index = String::new();
-            let mut n = n;
-
-            loop {
-                match n % 10 {
-                    0 => index = "₀".to_string() + &index,
-                    1 => index = "₁".to_string() + &index,
-                    2 => index = "₂".to_string() + &index,
-                    3 => index = "₃".to_string() + &index,
-                    4 => index = "₄".to_string() + &index,
-                    5 => index = "₅".to_string() + &index,
-                    6 => index = "₆".to_string() + &index,
-                    7 => index = "₇".to_string() + &index,
-                    8 => index = "₈".to_string() + &index,
-                    9 => index = "₉".to_string() + &index,
-                    _ => {}
-                }
-
-                n /= 10;
-
-                if n == 0 {
-                    break;
-                }
-            }
-
-            index
-        }
-
         let mu = self.mu();
 
         let mut monoms = Vec::new();
@@ -380,7 +352,7 @@ impl BooleanFunc {
             }
         }
 
-        for i in 1..=scores.len() {
+        for i in 1..scores.len() {
             if scores[i] != 0 {
                 break;
             }
@@ -390,6 +362,86 @@ impl BooleanFunc {
 
         result
     }
+
+    pub fn nonlinearity_coefficient(&self) -> usize {
+        if self.n_vars == 0 {
+            return 0;
+        }
+
+        let wht = self.wht();
+        let mut max: usize = 0;
+
+        for i in 0..wht.len() {
+            let cur = wht[i].abs() as usize;
+            if cur > max {
+                max = cur;
+            }
+        }
+
+        (1 << (self.n_vars - 1)) - max / 2
+    }
+
+    pub fn affine_approximation(&self) -> String {
+        if self.n_vars == 0 {
+            return String::new();
+        }
+
+        let wht = self.wht();
+        let mut max: usize = 0;
+        let mut sign: bool = false;
+
+        for i in 0..wht.len() {
+            let cur = wht[i].abs() as usize;
+            if cur > max {
+                max = cur;
+                sign = if wht[i] < 0 { true } else { false };
+            }
+        }
+
+        let mut monoms = Vec::new();
+
+        for i in 0..(size_of::<usize>() * 8) {
+            if (max >> i) & 1 == 1 {
+                monoms.push(format!("x{}", get_index(i)))
+            }
+        }
+
+        let mut result = monoms.join(" ⊕ ");
+        if sign {
+            result += " ⊕ 1"
+        }
+
+        result
+    }
+}
+
+fn get_index(n: usize) -> String {
+    let mut index = String::new();
+    let mut n = n;
+
+    loop {
+        match n % 10 {
+            0 => index = "₀".to_string() + &index,
+            1 => index = "₁".to_string() + &index,
+            2 => index = "₂".to_string() + &index,
+            3 => index = "₃".to_string() + &index,
+            4 => index = "₄".to_string() + &index,
+            5 => index = "₅".to_string() + &index,
+            6 => index = "₆".to_string() + &index,
+            7 => index = "₇".to_string() + &index,
+            8 => index = "₈".to_string() + &index,
+            9 => index = "₉".to_string() + &index,
+            _ => {}
+        }
+
+        n /= 10;
+
+        if n == 0 {
+            break;
+        }
+    }
+
+    index
 }
 
 impl Clone for BooleanFunc {
@@ -595,6 +647,39 @@ mod tests {
             ],
             bf.wht()
         );
+    }
+
+    #[test]
+    fn test_ci_order() {
+        let bf = BooleanFunc::from_str("01100110").unwrap();
+        assert_eq!(bf.ci_order(), 1);
+
+        let bf = BooleanFunc::from_str("10010110").unwrap();
+        assert_eq!(bf.ci_order(), 2);
+
+        let bf = BooleanFunc::from_str("11111111").unwrap();
+        assert_eq!(bf.ci_order(), 3);
+
+        let bf = BooleanFunc::from_str("00000000").unwrap();
+        assert_eq!(bf.ci_order(), 3);
+    }
+
+    #[test]
+    fn test_nonlinearity_coefficient() {
+        let bf = BooleanFunc::from_str("01111010").unwrap();
+        assert_eq!(bf.nonlinearity_coefficient(), 1);
+
+        let bf = BooleanFunc::from_str("00011010").unwrap();
+        assert_eq!(bf.nonlinearity_coefficient(), 1);
+    }
+
+    #[test]
+    fn test_affine_approximation() {
+        let bf = BooleanFunc::from_str("01111010").unwrap();
+        assert_eq!(bf.affine_approximation(), "x₁ ⊕ x₂");
+
+        let bf = BooleanFunc::from_str("10111010").unwrap();
+        assert_eq!(bf.affine_approximation(), "x₁ ⊕ x₂ ⊕ 1");
     }
 
     #[test]
